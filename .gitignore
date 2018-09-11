@@ -1,0 +1,8 @@
+/dgt_pc/EWARM/*
+!/dgt_pc/EWARM/dgt_pc.ewp
+!/dgt_pc/EWARM/dgt_pc.ewd
+!/dgt_pc/EWARM/Project.eww
+!/dgt_pc/EWARM/startup_stm32f103xb.s
+!/dgt_pc/EWARM/stm32f103xb_flash.icf
+!/dgt_pc/EWARM/stm32f103xb_sram.icf
+
