@@ -1463,20 +1463,6 @@ void modbus_free(modbus_t *ctx)
     ctx->backend->free(ctx);
 }
 
-/*
-*modbus 验证写入的数值是否合法
-*/
-
-int modbus_is_write_value_legal(modbus_t *ctx,int map_addr,uint8_t *value,int cnt)
-{
-  
-  
-  
-  
-  
-  
-}
-
 /* Allocates 4 arrays to store bits, input bits, registers and inputs
    registers. The pointers are stored in modbus_mapping structure.
 

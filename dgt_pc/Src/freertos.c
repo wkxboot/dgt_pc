@@ -51,15 +51,23 @@
 #include "task.h"
 #include "cmsis_os.h"
 
-/* USER CODE BEGIN Includes */     
-
+/* USER CODE BEGIN Includes */ 
+#include "protocol_task.h"
+#include "scale_task.h"
+#include "cpu_utils.h"
+#include "iwdg.h"
+#include "log.h"
+#define LOG_MODULE_NAME   "[freertos]"
+#define LOG_MODULE_LEVEL   LOG_LEVEL_DEBUG 
 /* USER CODE END Includes */
 
 /* Variables -----------------------------------------------------------------*/
 osThreadId defaultTaskHandle;
 
 /* USER CODE BEGIN Variables */
-
+#define  WATCH_DOG_TIMEOUT_VALUE        200
+#define  CPU_TIMEOUT_VALUE              1000
+extern IWDG_HandleTypeDef hiwdg;
 /* USER CODE END Variables */
 
 /* Function prototypes -------------------------------------------------------*/
@@ -109,6 +117,7 @@ __weak void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTask
    /* Run time stack overflow checking is performed if
    configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
    called if a stack overflow is detected. */
+   log_error("%s stack overflow.\r\n",pcTaskName);
 }
 /* USER CODE END 4 */
 
@@ -125,6 +134,7 @@ __weak void vApplicationMallocFailedHook(void)
    FreeRTOSConfig.h, and the xPortGetFreeHeapSize() API function can be used
    to query the size of free heap space that remains (although it does not
    provide information on how the remaining heap might be fragmented). */
+   log_error("memory malloc failed.\r\n");
 }
 /* USER CODE END 5 */
 
@@ -153,7 +163,12 @@ void MX_FREERTOS_Init(void) {
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+  osThreadDef(protocol_task, protocol_task, osPriorityNormal, 0, 128);
+  protocol_task_hdl = osThreadCreate(osThread(protocol_task), NULL);
+  
+  osThreadDef(scale_task, scale_task, osPriorityNormal, 0, 128);
+  scale_task_hdl = osThreadCreate(osThread(scale_task), NULL);
+  
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
@@ -167,9 +182,18 @@ void StartDefaultTask(void const * argument)
 
   /* USER CODE BEGIN StartDefaultTask */
   /* Infinite loop */
+  uint16_t timeout =0;
+  log_debug("cpu and wdg task start.\r\n");
   for(;;)
   {
-    osDelay(1);
+    /*feed dog every 200 ms*/
+    HAL_IWDG_Refresh(&hiwdg);
+    osDelay(WATCH_DOG_TIMEOUT_VALUE);
+    timeout+=WATCH_DOG_TIMEOUT_VALUE;
+    if(timeout >=CPU_TIMEOUT_VALUE){
+      log_one_line("cpu:%d.",osGetCPUUsage());
+      timeout =0;
+    }
   }
   /* USER CODE END StartDefaultTask */
 }

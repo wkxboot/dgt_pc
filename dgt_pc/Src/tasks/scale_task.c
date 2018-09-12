@@ -18,6 +18,35 @@ task_msg_t protocol_msg;
 
 extern serial_hal_driver_t modbus_serial_driver;
 
+/*modbus rtu rs485操作*/
+void modbus_rtu_send_pre()
+{
+bsp_modbus_485_enable_write();  
+}
+/*modbus rtu rs485操作*/
+void modbus_rtu_send_after()
+{
+bsp_modbus_485_enable_read();   
+}
+
+/*从地址0-254逐个尝试读地址，直到找到为止*/
+static int scale_task_probe_slave_addr(modbus_t *ctx)
+{
+uint8_t addr;
+uint16_t read_value[1];
+int rc;
+
+for(addr = 0; addr < SCLAE_TASK_DEFAULT_SLAVE_ADDR;addr++){
+modbus_set_slave(ctx,addr); 
+rc = modbus_read_registers(ctx,SCALE_TASK_ADDR_REG_ADDR,SCALE_TASK_ADDR_REG_CNT,read_value);
+if(rc ==0){
+log_debug("probe addr ok.slave addr :%d.\r\n",addr);
+return addr;
+}
+}
+log_error("probe addr err.can not find addr.\r\n");  
+return -1;
+}
 
 
 void scale_task(void const * argument)
@@ -43,27 +72,25 @@ void scale_task(void const * argument)
                       SCALE_TASK_MODBUS_SERIAL_STOPBITS,
                       &modbus_serial_driver);
  log_assert(ctx);
- slave_addr = scale_task_get_slave_addr();
+ slave_addr = scale_task_probe_slave_addr(ctx);
  if(slave_addr < 0){
- log_error("scale task get slave addr error.\r\n");
  slave_addr = SCLAE_TASK_DEFAULT_SLAVE_ADDR;
+ log_error("slave addr default:%d.\r\n",slave_addr);
  }
  rc = modbus_set_slave(ctx,slave_addr); 
  log_assert(rc == 0);
  rc = modbus_connect(ctx);
  log_assert(rc == 0);
  
- while(1){
-   
+ while(1){   
  os_msg = osMessageGet(scale_task_msg_q_id,SCALE_TASK_MSG_WAIT_TIMEOUT_VALUE);
  
  if(os_msg.status == osEventMessage){
  msg = (task_msg_t*)os_msg.value.v;
  
- 
  /*向protocol_task回应净重值*/
  if(msg->type ==  REQ_NET_WEIGHT){
-  rc = modbus_read_registers(ctx,SCALE_TASK_NET_WEIGHT_REG_ADDR,SCALE_TASK_NET_WEIGHT_REG_CNT,value);
+  rc = modbus_read_registers(ctx,SCALE_TASK_NET_WEIGHT_REG_ADDR,SCALE_TASK_NET_WEIGHT_REG_CNT,read_value);
   if(rc != 0){
   net_weight = SCALE_TASK_WEIGHT_ERR_VALUE;
   }else{
@@ -82,8 +109,8 @@ void scale_task(void const * argument)
  /*向protocol_task回应0点校准结果*/
  if(msg->type ==  REQ_CALIBRATE_ZERO){
   result = SCALE_TASK_SUCCESS;
-  write_value[0]=SCALE_TASK_CALIBRATE_AUTO_VALUE >> 8;
-  write_value[1]=SCALE_TASK_CALIBRATE_AUTO_VALUE & 0xFF;
+  write_value[0]=SCALE_TASK_CALIBRATE_AUTO_VALUE >> 16;
+  write_value[1]=SCALE_TASK_CALIBRATE_AUTO_VALUE & 0xFFFF;
   rc = modbus_write_registers(ctx,SCALE_TASK_CALIBRATE_ZERO_CODE_REG_ADDR,SCALE_TASK_CALIBRATE_ZERO_CODE_REG_CNT,write_value);
   if(rc != 0){
   /*校准错误直接返回失败*/
@@ -106,8 +133,8 @@ calibrate_zero_msg_handle:
  /*向protocol_task回应full点校准结果*/
  if(msg->type ==  REQ_CALIBRATE_FULL){
   result = SCALE_TASK_SUCCESS;
-  write_value[0]=SCALE_TASK_CALIBRATE_AUTO_VALUE >> 8;
-  write_value[1]=SCALE_TASK_CALIBRATE_AUTO_VALUE & 0xFF;
+  write_value[0]=SCALE_TASK_CALIBRATE_AUTO_VALUE >> 16;
+  write_value[1]=SCALE_TASK_CALIBRATE_AUTO_VALUE & 0xFFFF;
   rc = modbus_write_registers(ctx,SCALE_TASK_CALIBRATE_FULL_CODE_REG_ADDR,SCALE_TASK_CALIBRATE_FULL_CODE_REG_CNT,write_value);
   if(rc != 0){
   /*校准错误直接返回失败*/
@@ -130,8 +157,8 @@ calibrate_full_msg_handle:
  /*向protocol_task回应remov tar weight结果*/
  if(msg->type ==  REQ_REMOVE_TAR_WEIGHT){
   result = SCALE_TASK_SUCCESS;
-  write_value[0]=SCALE_TASK_REMOVE_TAR_WEIGHT_VALUE >> 8;
-  write_value[1]=SCALE_TASK_REMOVE_TAR_WEIGHT_VALUE & 0xFF;
+  write_value[0]=SCALE_TASK_REMOVE_TAR_WEIGHT_VALUE >> 16;
+  write_value[1]=SCALE_TASK_REMOVE_TAR_WEIGHT_VALUE & 0xFFFF;
   rc = modbus_write_registers(ctx,SCALE_TASK_REMOVE_TAR_WEIGHT_REG_ADDR,SCALE_TASK_REMOVE_TAR_WEIGHT_REG_CNT,write_value);
   if(rc != 0){
   /*去皮错误直接返回失败*/
@@ -149,6 +176,13 @@ remov_tar_weight_msg_handle:
  /*向protocol_task回应set slave addr结果*/
  if(msg->type ==  REQ_SET_ADDR){
   result = SCALE_TASK_SUCCESS;
+  write_value[0] = SCALE_TASK_SYS_UNLOCK_VALUE;
+  rc = modbus_write_registers(ctx,SCALE_TASK_UNLOCK_REG_ADDR,SCALE_TASK_UNLOCK_REG_CNT,write_value);
+  if(rc != 0){
+  /*系统解锁错误直接返回失败*/
+  result = SCALE_TASK_FAILURE;
+  goto set_addr_msg_handle;
+  }
   write_value[0]=msg->scale_addr;
   rc = modbus_write_registers(ctx,SCALE_TASK_ADDR_REG_ADDR,SCALE_TASK_ADDR_REG_CNT,write_value);
   if(rc != 0){
@@ -195,6 +229,6 @@ set_addr_msg_handle:
    status = osMessagePut(protocol_task_msg_q_id,(uint32_t)(&protocol_msg),SCALE_TASK_MSG_PUT_TIMEOUT_VALUE);  
    log_assert(status == osOK);   
   } 
- 
+ }
  }
 }

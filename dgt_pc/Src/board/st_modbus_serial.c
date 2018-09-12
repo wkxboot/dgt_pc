@@ -13,7 +13,7 @@ void st_modbus_serial_enable_rxne_int();
 void st_modbus_serial_disable_rxne_int();
 
 
-extern int st_modbus_serial_handle;
+int modbus_serial_handle;
 
 serial_hal_driver_t modbus_serial_driver={
 .init=st_modbus_serial_init,
@@ -24,8 +24,8 @@ serial_hal_driver_t modbus_serial_driver={
 .disable_rxne_int=st_modbus_serial_disable_rxne_int
 };
 
-extern UART_HandleTypeDef huart1;
-UART_HandleTypeDef *st_serial = &huart1;
+extern UART_HandleTypeDef huart2;
+static UART_HandleTypeDef *st_serial = &huart2;
 
 
 
@@ -99,7 +99,7 @@ void st_modbus_serial_isr(void)
   if((tmp_flag != RESET) && (tmp_it_source != RESET))
   { 
   recv_byte = (uint8_t)(st_serial->Instance->DR & (uint8_t)0x00FF);
-  isr_serial_put_byte_from_recv(st_modbus_serial_handle,recv_byte);
+  isr_serial_put_byte_from_recv(modbus_serial_handle,recv_byte);
   }
 
   tmp_flag = __HAL_UART_GET_FLAG(st_serial, /*UART_FLAG_TXE*/UART_FLAG_TC);
@@ -108,7 +108,7 @@ void st_modbus_serial_isr(void)
   /*发送中断*/
   if((tmp_flag != RESET) && (tmp_it_source != RESET))
   {
-    result =isr_serial_get_byte_to_send(st_modbus_serial_handle,&send_byte);
+    result =isr_serial_get_byte_to_send(modbus_serial_handle,&send_byte);
     if(result == 1)
     {
     st_serial->Instance->DR = send_byte;
