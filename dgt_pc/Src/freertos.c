@@ -51,7 +51,7 @@
 #include "task.h"
 #include "cmsis_os.h"
 
-/* USER CODE BEGIN Includes */ 
+/* USER CODE BEGIN Includes */     
 #include "protocol_task.h"
 #include "scale_task.h"
 #include "cpu_utils.h"

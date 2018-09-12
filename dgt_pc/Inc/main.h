@@ -59,12 +59,12 @@
 
 /* Private define ------------------------------------------------------------*/
 
-#define LED_CTRL_Pin GPIO_PIN_4
-#define LED_CTRL_GPIO_Port GPIOA
 #define HOST_485_RWE_CTRL_Pin GPIO_PIN_5
 #define HOST_485_RWE_CTRL_GPIO_Port GPIOA
 #define SLAVE_485_RWE_CTRL_Pin GPIO_PIN_6
 #define SLAVE_485_RWE_CTRL_GPIO_Port GPIOA
+#define LED_CTRL_Pin GPIO_PIN_9
+#define LED_CTRL_GPIO_Port GPIOB
 
 /* ########################## Assert Selection ############################## */
 /**
