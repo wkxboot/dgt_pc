@@ -54,7 +54,6 @@
 /* USER CODE BEGIN Includes */     
 #include "protocol_task.h"
 #include "scale_task.h"
-#include "cpu_utils.h"
 #include "iwdg.h"
 #include "log.h"
 #define LOG_MODULE_NAME   "[freertos]"
@@ -76,7 +75,7 @@ void StartDefaultTask(void const * argument);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
 /* USER CODE BEGIN FunctionPrototypes */
-
+static void toggle_led();
 /* USER CODE END FunctionPrototypes */
 
 /* Hook prototypes */
@@ -166,7 +165,7 @@ void MX_FREERTOS_Init(void) {
   osThreadDef(protocol_task, protocol_task, osPriorityNormal, 0, 128);
   protocol_task_hdl = osThreadCreate(osThread(protocol_task), NULL);
   
-  osThreadDef(scale_task, scale_task, osPriorityNormal, 0, 128);
+  osThreadDef(scale_task, scale_task, osPriorityNormal, 0, 200);
   scale_task_hdl = osThreadCreate(osThread(scale_task), NULL);
   
   /* USER CODE END RTOS_THREADS */
@@ -182,24 +181,27 @@ void StartDefaultTask(void const * argument)
 
   /* USER CODE BEGIN StartDefaultTask */
   /* Infinite loop */
-  uint16_t timeout =0;
-  log_debug("cpu and wdg task start.\r\n");
+  log_debug("wdg task start.\r\n");
   for(;;)
   {
     /*feed dog every 200 ms*/
     HAL_IWDG_Refresh(&hiwdg);
     osDelay(WATCH_DOG_TIMEOUT_VALUE);
-    timeout+=WATCH_DOG_TIMEOUT_VALUE;
-    if(timeout >=CPU_TIMEOUT_VALUE){
-      log_one_line("cpu:%d.",osGetCPUUsage());
-      timeout =0;
-    }
+    toggle_led();
   }
   /* USER CODE END StartDefaultTask */
 }
 
 /* USER CODE BEGIN Application */
-     
+static void toggle_led()
+{
+ HAL_GPIO_TogglePin(LED_CTRL_GPIO_Port, LED_CTRL_Pin);
+}
+
+uint32_t log_time(void)
+{
+return osKernelSysTick();
+} 
 /* USER CODE END Application */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

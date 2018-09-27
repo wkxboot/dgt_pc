@@ -59,7 +59,7 @@
 
 /* Private define ------------------------------------------------------------*/
 
-#define HOST_485_RWE_CTRL_Pin GPIO_PIN_5
+#define HOST_485_RWE_CTRL_Pin GPIO_PIN_1
 #define HOST_485_RWE_CTRL_GPIO_Port GPIOA
 #define SLAVE_485_RWE_CTRL_Pin GPIO_PIN_6
 #define SLAVE_485_RWE_CTRL_GPIO_Port GPIOA

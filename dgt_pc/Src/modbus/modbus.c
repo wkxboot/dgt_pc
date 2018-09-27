@@ -11,7 +11,7 @@
 #include "cmsis_os.h"
 #include "log.h"
 #define LOG_MODULE_NAME   "[modbus]"
-#define LOG_MODULE_LEVEL   LOG_LEVEL_DEBUG  
+#define LOG_MODULE_LEVEL   LOG_LEVEL_OFF  
    
 /* Internal use */
 #define MSG_LENGTH_UNDEFINED -1

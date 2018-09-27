@@ -10,12 +10,12 @@ void scale_task(void const *argument);
 
 
 
-#define  SCALE_TASK_MODBUS_SERIAL_PORT               1
+#define  SCALE_TASK_MODBUS_SERIAL_PORT               2
 #define  SCALE_TASK_MODBUS_SERIAL_BAUDRATE           115200
 #define  SCALE_TASK_MODBUS_SERIAL_DATABITS           8
-#define  SCALE_TASK_MODBUS_SERIAL_STOPBITS           2
+#define  SCALE_TASK_MODBUS_SERIAL_STOPBITS           1
 
-#define  SCLAE_TASK_DEFAULT_SLAVE_ADDR               247
+#define  SCLAE_TASK_DEFAULT_SLAVE_ADDR               0x05//0xF7
 
 
 

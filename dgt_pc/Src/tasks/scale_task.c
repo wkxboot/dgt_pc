@@ -13,7 +13,7 @@
 
 osThreadId scale_task_hdl;
 osMessageQId scale_task_msg_q_id;
-
+extern int modbus_serial_handle;
 task_msg_t protocol_msg;
 
 extern serial_hal_driver_t modbus_serial_driver;
@@ -29,17 +29,17 @@ void modbus_rtu_send_after()
 bsp_modbus_485_enable_read();   
 }
 
-/*从地址0-254逐个尝试读地址，直到找到为止*/
+/*从地址0-0xfe逐个尝试读地址，直到找到为止*/
 static int scale_task_probe_slave_addr(modbus_t *ctx)
 {
 uint8_t addr;
 uint16_t read_value[1];
 int rc;
 
-for(addr = 0; addr < SCLAE_TASK_DEFAULT_SLAVE_ADDR;addr++){
+for(addr = 0; addr <= SCLAE_TASK_DEFAULT_SLAVE_ADDR;addr++){
 modbus_set_slave(ctx,addr); 
 rc = modbus_read_registers(ctx,SCALE_TASK_ADDR_REG_ADDR,SCALE_TASK_ADDR_REG_CNT,read_value);
-if(rc ==0){
+if(rc > 0){
 log_debug("probe addr ok.slave addr :%d.\r\n",addr);
 return addr;
 }
@@ -72,6 +72,9 @@ void scale_task(void const * argument)
                       SCALE_TASK_MODBUS_SERIAL_STOPBITS,
                       &modbus_serial_driver);
  log_assert(ctx);
+ modbus_serial_handle = ctx->s;
+ rc = modbus_connect(ctx);
+ log_assert(rc == 0);
  slave_addr = scale_task_probe_slave_addr(ctx);
  if(slave_addr < 0){
  slave_addr = SCLAE_TASK_DEFAULT_SLAVE_ADDR;
@@ -94,7 +97,7 @@ void scale_task(void const * argument)
   if(rc != 0){
   net_weight = SCALE_TASK_WEIGHT_ERR_VALUE;
   }else{
-  net_weight = read_value[0]<<8 |read_value[1];
+  net_weight = read_value[0]<<16 |read_value[1];
   if(net_weight >= SCALE_TASK_MAX_WEIGHT_VALUE ||
      net_weight <= SCALE_TASK_MIN_WEIGHT_VALUE){
   net_weight = SCALE_TASK_WEIGHT_ERR_VALUE;
@@ -192,6 +195,9 @@ remov_tar_weight_msg_handle:
   } 
 
 set_addr_msg_handle:    
+  if(result == SCALE_TASK_SUCCESS){
+    slave_addr = msg->scale_addr;
+    }
     protocol_msg.type = RESPONSE_SET_ADDR;
     protocol_msg.result = result;
     status = osMessagePut(protocol_task_msg_q_id,(uint32_t)(&protocol_msg),SCALE_TASK_MSG_PUT_TIMEOUT_VALUE);

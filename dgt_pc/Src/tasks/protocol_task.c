@@ -4,16 +4,17 @@
 #include "task_msg.h"
 #include "scale_task.h"
 #include "protocol_task.h"
+#include "cpu_utils.h"
 #include "log.h"
 #define LOG_MODULE_NAME   "[protocol]"
-#define LOG_MODULE_LEVEL   LOG_LEVEL_DEBUG 
+#define LOG_MODULE_LEVEL   LOG_LEVEL_ERROR 
 
 extern int protocol_serial_handle;
 extern serial_hal_driver_t protocol_serial_driver;
 
 osThreadId protocol_task_hdl;
 osMessageQId protocol_task_msg_q_id;
-
+task_msg_t scale_msg;
 
 typedef enum
 {
@@ -114,7 +115,6 @@ static int16_t protocol_get_net_weight()
  osStatus status;
  osEvent  os_msg;
  task_msg_t *msg;
- task_msg_t scale_msg;
  int16_t net_weight =0;
  
  scale_msg.type = REQ_NET_WEIGHT;
@@ -139,7 +139,6 @@ static int protocol_remove_tar_weight()
  osStatus status;
  osEvent  os_msg;
  task_msg_t *msg;
- task_msg_t scale_msg;
  int        result = -1;
  
  scale_msg.type = REQ_REMOVE_TAR_WEIGHT;
@@ -167,7 +166,6 @@ static int protocol_calibrate_weight(int16_t weight)
  osStatus status;
  osEvent  os_msg;
  task_msg_t *msg;
- task_msg_t scale_msg;
  int        result = -1;
  
  scale_msg.type = REQ_CALIBRATE_ZERO;
@@ -196,7 +194,6 @@ static uint8_t protocol_get_sensor_id()
  osStatus status;
  osEvent  os_msg;
  task_msg_t *msg;
- task_msg_t scale_msg;
  uint8_t sensor_id = 0;
  
  scale_msg.type = REQ_SENSOR_ID;
@@ -220,7 +217,6 @@ static uint16_t protocol_get_fireware_version()
  osStatus status;
  osEvent  os_msg;
  task_msg_t *msg;
- task_msg_t scale_msg;
  uint16_t   version = 0;
  
  scale_msg.type = REQ_VERSION;
@@ -244,7 +240,6 @@ static uint8_t protocol_get_scale_addr()
  osStatus status;
  osEvent  os_msg;
  task_msg_t *msg;
- task_msg_t scale_msg;
  uint16_t   addr = 0;
  
  scale_msg.type = REQ_ADDR;
@@ -268,7 +263,6 @@ int protocol_set_scale_addr(uint8_t addr)
  osStatus status;
  osEvent  os_msg;
  task_msg_t *msg;
- task_msg_t scale_msg;
  int        result = -1;
  
  scale_msg.type = REQ_SET_ADDR;
@@ -330,9 +324,9 @@ void protocol_task(void const * argument)
                   PROTOCOL_TASK_SERIAL_STOPBITS);
  
  log_assert(rc == 0); 
- 
+
  /*等待scale_task启动完毕*/
- osDelay(1000);
+ osDelay(PROTOCOL_TASK_START_DELAY_TIME_VALUE);
  
  /*读取上电后当前地址值*/
  scale_addr = protocol_get_scale_addr();
@@ -418,7 +412,7 @@ protocol_parse_start:
           if(net_weight == SCALE_TASK_WEIGHT_ERR_VALUE){
           net_weight = PROTOCOL_TASK_WEIGHT_ERR_VALUE;
           }
-
+          log_one_line("cpu:%d%%.weight:%dg.",osGetCPUUsage(),net_weight);
           send_buffer[length_to_write++] = net_weight & 0xff;
           send_buffer[length_to_write++] = net_weight >> 8;        
           length_to_write = protocol_task_prepare_crc16(send_buffer,length_to_write);         
@@ -545,11 +539,12 @@ protocol_parse_start:
           send_buffer[length_to_write++] = scale_addr;   
           send_buffer[length_to_write++] = PROTOCOL_TASK_FUNC_SET_ADDR;
           
-          scale_set_addr = recv_buffer[PROTOCOL_TASK_ADU_FUNC_OFFSET];
+          scale_set_addr = recv_buffer[PROTOCOL_TASK_ADU_PAYLOAD_OFFSET];
           rc = protocol_set_scale_addr(scale_set_addr);
 
           if(rc == 0){
-          result = PROTOCOL_TASK_SUCCESS_VALUE;                
+          result = PROTOCOL_TASK_SUCCESS_VALUE; 
+          scale_addr = scale_set_addr;
          }else{
           result = PROTOCOL_TASK_FAILURE_VALUE; 
          }

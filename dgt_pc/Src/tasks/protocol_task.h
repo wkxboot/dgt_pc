@@ -6,8 +6,9 @@ extern osThreadId   protocol_task_hdl;
 extern osMessageQId protocol_task_msg_q_id;
 void protocol_task(void const * argument);
 
+#define  PROTOCOL_TASK_START_DELAY_TIME_VALUE      1000
 
-#define  PROTOCOL_TASK_SERIAL_PORT                 0
+#define  PROTOCOL_TASK_SERIAL_PORT                 1
 #define  PROTOCOL_TASK_SERIAL_BAUDRATES            115200
 #define  PROTOCOL_TASK_SERIAL_DATABITS             8
 #define  PROTOCOL_TASK_SERIAL_STOPBITS             1
@@ -43,7 +44,7 @@ void protocol_task(void const * argument);
 #define  PROTOCOL_TASK_CHARACTER_TIMEOUT_VALUE     3
 
 #define  PROTOCOL_TASK_MSG_PUT_TIMEOUT_VALUE       5
-#define  PROTOCOL_TASK_MSG_WAIT_TIMEOUT_VALUE      800
+#define  PROTOCOL_TASK_MSG_WAIT_TIMEOUT_VALUE      200
 
 
 /*协议定义*/
