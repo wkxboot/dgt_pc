@@ -25,7 +25,7 @@ RESPONSE_ADDR
 typedef struct
 {
 task_msg_type_t type;
-struct{
+union{
 int16_t      net_weight;
 int16_t      calibrate_weight;
 uint8_t      result;
