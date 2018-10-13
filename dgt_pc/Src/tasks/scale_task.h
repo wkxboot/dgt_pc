@@ -15,7 +15,7 @@ void scale_task(void const *argument);
 #define  SCALE_TASK_MODBUS_SERIAL_DATABITS           8
 #define  SCALE_TASK_MODBUS_SERIAL_STOPBITS           1
 
-#define  SCLAE_TASK_DEFAULT_SLAVE_ADDR               0x05//0xF7
+#define  SCLAE_TASK_DEFAULT_SLAVE_ADDR               0x20
 
 
 
@@ -37,6 +37,7 @@ void scale_task(void const *argument);
 #define  SCALE_TASK_SYS_UNLOCK_VALUE                   0x5AA5
 #define  SCALE_TASK_CALIBRATE_AUTO_VALUE               0x7FFFFFFFUL
 #define  SCALE_TASK_REMOVE_TAR_WEIGHT_VALUE            0x7FFFFFFFUL
+#define  SCALE_TASK_CLEAR_ZERO_WEIGHT_VALUE            0x0001
 
 #define  SCALE_TASK_NET_WEIGHT_REG_ADDR                82
 #define  SCALE_TASK_NET_WEIGHT_REG_CNT                 2
@@ -56,6 +57,9 @@ void scale_task(void const *argument);
 
 #define  SCALE_TASK_REMOVE_TAR_WEIGHT_REG_ADDR         84
 #define  SCALE_TASK_REMOVE_TAR_WEIGHT_REG_CNT          2
+
+#define  SCALE_TASK_CLEAR_ZERO_WEIGHT_REG_ADDR         94
+#define  SCALE_TASK_CLEAR_ZERO_WEIGHT_REG_CNT          1
 
 #define  SCALE_TASK_ADDR_REG_ADDR                      0
 #define  SCALE_TASK_ADDR_REG_CNT                       1

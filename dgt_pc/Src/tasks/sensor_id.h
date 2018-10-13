@@ -7,7 +7,7 @@
 #define  SENSOR_ID_OTHER          0xC2 /*其他*/
 
 
-#define  SENSOR_ID                SENSOR_ID_ZE
+#define  SENSOR_ID                SENSOR_ID_WK
 
 
 

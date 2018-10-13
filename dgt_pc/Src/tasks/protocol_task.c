@@ -4,6 +4,7 @@
 #include "task_msg.h"
 #include "scale_task.h"
 #include "protocol_task.h"
+#include "tasks_init.h"
 #include "cpu_utils.h"
 #include "log.h"
 #define LOG_MODULE_NAME   "[protocol]"
@@ -14,7 +15,7 @@ extern serial_hal_driver_t protocol_serial_driver;
 
 osThreadId protocol_task_hdl;
 osMessageQId protocol_task_msg_q_id;
-task_msg_t scale_msg;
+static task_msg_t scale_msg;
 
 typedef enum
 {
@@ -168,7 +169,11 @@ static int protocol_calibrate_weight(int16_t weight)
  task_msg_t *msg;
  int        result = -1;
  
+ if(weight == 0){
  scale_msg.type = REQ_CALIBRATE_ZERO;
+ }else{
+ scale_msg.type = REQ_CALIBRATE_FULL;
+ }
  scale_msg.calibrate_weight = weight;
  status = osMessagePut(scale_task_msg_q_id,(uint32_t)&scale_msg,PROTOCOL_TASK_MSG_PUT_TIMEOUT_VALUE);
  log_assert(status == osOK);
@@ -176,7 +181,7 @@ static int protocol_calibrate_weight(int16_t weight)
  os_msg = osMessageGet(protocol_task_msg_q_id,PROTOCOL_TASK_MSG_WAIT_TIMEOUT_VALUE);
  if(os_msg.status == osEventMessage){
  msg = (task_msg_t *)os_msg.value.v;
- if(msg->type == RESPONSE_CALIBRATE_ZERO){
+ if(msg->type == RESPONSE_CALIBRATE_ZERO || msg->type == RESPONSE_CALIBRATE_FULL){
    if( msg->result == SCALE_TASK_SUCCESS){
      result = 0;
    }else{
@@ -325,8 +330,9 @@ void protocol_task(void const * argument)
  
  log_assert(rc == 0); 
 
- /*等待scale_task启动完毕*/
- osDelay(PROTOCOL_TASK_START_DELAY_TIME_VALUE);
+   /*等待任务同步*/
+  xEventGroupSync(tasks_sync_evt_group_hdl,TASKS_SYNC_EVENT_PROTOCOL_TASK_RDY,TASKS_SYNC_EVENT_ALL_TASKS_RDY,osWaitForever);
+  log_debug("protocol task sync ok.\r\n");
  
  /*读取上电后当前地址值*/
  scale_addr = protocol_get_scale_addr();
@@ -412,7 +418,7 @@ protocol_parse_start:
           if(net_weight == SCALE_TASK_WEIGHT_ERR_VALUE){
           net_weight = PROTOCOL_TASK_WEIGHT_ERR_VALUE;
           }
-          log_one_line("cpu:%d%%.weight:%dg.",osGetCPUUsage(),net_weight);
+         
           send_buffer[length_to_write++] = net_weight & 0xff;
           send_buffer[length_to_write++] = net_weight >> 8;        
           length_to_write = protocol_task_prepare_crc16(send_buffer,length_to_write);         

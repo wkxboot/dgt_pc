@@ -5,7 +5,8 @@
 #include "task_msg.h"
 #include "scale_task.h"
 #include "protocol_task.h"
-#include "version.h"
+#include "firmware_version.h"
+#include "tasks_init.h"
 #include "sensor_id.h"
 #include "log.h"
 #define LOG_MODULE_NAME   "[scale]"
@@ -13,8 +14,11 @@
 
 osThreadId scale_task_hdl;
 osMessageQId scale_task_msg_q_id;
+
+#define  PROBE_SLAVE_ADDR_ERR_TIMEOUT    200
+extern uint16_t wdg_timeout;
 extern int modbus_serial_handle;
-task_msg_t protocol_msg;
+static task_msg_t protocol_msg;
 
 extern serial_hal_driver_t modbus_serial_driver;
 
@@ -29,15 +33,16 @@ void modbus_rtu_send_after()
 bsp_modbus_485_enable_read();   
 }
 
-/*从地址0-0xfe逐个尝试读地址，直到找到为止*/
+/*从地址1-0x20逐个尝试读地址，直到找到为止*/
 static int scale_task_probe_slave_addr(modbus_t *ctx)
 {
 uint8_t addr;
 uint16_t read_value[1];
 int rc;
 
-for(addr = 0; addr <= SCLAE_TASK_DEFAULT_SLAVE_ADDR;addr++){
+for(addr = 1; addr <= SCLAE_TASK_DEFAULT_SLAVE_ADDR;addr++){
 modbus_set_slave(ctx,addr); 
+log_debug("probe addr:%d...\r\n",addr);
 rc = modbus_read_registers(ctx,SCALE_TASK_ADDR_REG_ADDR,SCALE_TASK_ADDR_REG_CNT,read_value);
 if(rc > 0){
 log_debug("probe addr ok.slave addr :%d.\r\n",addr);
@@ -75,16 +80,26 @@ void scale_task(void const * argument)
  modbus_serial_handle = ctx->s;
  rc = modbus_connect(ctx);
  log_assert(rc == 0);
+ 
+reprobe_slave_addr:
  slave_addr = scale_task_probe_slave_addr(ctx);
  if(slave_addr < 0){
  slave_addr = SCLAE_TASK_DEFAULT_SLAVE_ADDR;
  log_error("slave addr default:%d.\r\n",slave_addr);
+ 
+ goto reprobe_slave_addr;
  }
+ 
+ wdg_timeout = PROBE_SLAVE_ADDR_ERR_TIMEOUT;
+ 
  rc = modbus_set_slave(ctx,slave_addr); 
  log_assert(rc == 0);
- rc = modbus_connect(ctx);
- log_assert(rc == 0);
+
  
+ /*等待任务同步*/
+ xEventGroupSync(tasks_sync_evt_group_hdl,TASKS_SYNC_EVENT_SCALE_TASK_RDY,TASKS_SYNC_EVENT_ALL_TASKS_RDY,osWaitForever);
+ log_debug("scale task sync ok.\r\n");
+  
  while(1){   
  os_msg = osMessageGet(scale_task_msg_q_id,SCALE_TASK_MSG_WAIT_TIMEOUT_VALUE);
  
@@ -94,7 +109,7 @@ void scale_task(void const * argument)
  /*向protocol_task回应净重值*/
  if(msg->type ==  REQ_NET_WEIGHT){
   rc = modbus_read_registers(ctx,SCALE_TASK_NET_WEIGHT_REG_ADDR,SCALE_TASK_NET_WEIGHT_REG_CNT,read_value);
-  if(rc != 0){
+  if(rc <= 0){
   net_weight = SCALE_TASK_WEIGHT_ERR_VALUE;
   }else{
   net_weight = read_value[0]<<16 |read_value[1];
@@ -115,13 +130,15 @@ void scale_task(void const * argument)
   write_value[0]=SCALE_TASK_CALIBRATE_AUTO_VALUE >> 16;
   write_value[1]=SCALE_TASK_CALIBRATE_AUTO_VALUE & 0xFFFF;
   rc = modbus_write_registers(ctx,SCALE_TASK_CALIBRATE_ZERO_CODE_REG_ADDR,SCALE_TASK_CALIBRATE_ZERO_CODE_REG_CNT,write_value);
-  if(rc != 0){
+  if(rc <= 0){
   /*校准错误直接返回失败*/
   result = SCALE_TASK_FAILURE;
   goto calibrate_zero_msg_handle;
   } 
+  write_value[0] = 0;
+  write_value[1] = 0;
   rc = modbus_write_registers(ctx,SCALE_TASK_CALIBRATE_ZERO_MEASURE_REG_ADDR,SCALE_TASK_CALIBRATE_ZERO_MEASURE_REG_CNT,write_value);
-  if(rc != 0){
+  if(rc <= 0){
   /*校准错误直接返回失败*/
   result = SCALE_TASK_FAILURE;
   goto calibrate_zero_msg_handle;
@@ -139,13 +156,15 @@ calibrate_zero_msg_handle:
   write_value[0]=SCALE_TASK_CALIBRATE_AUTO_VALUE >> 16;
   write_value[1]=SCALE_TASK_CALIBRATE_AUTO_VALUE & 0xFFFF;
   rc = modbus_write_registers(ctx,SCALE_TASK_CALIBRATE_FULL_CODE_REG_ADDR,SCALE_TASK_CALIBRATE_FULL_CODE_REG_CNT,write_value);
-  if(rc != 0){
+  if(rc <= 0){
   /*校准错误直接返回失败*/
   result = SCALE_TASK_FAILURE;
   goto calibrate_full_msg_handle;
   } 
+  write_value[0] = 0;
+  write_value[1] = msg->calibrate_weight;
   rc = modbus_write_registers(ctx,SCALE_TASK_CALIBRATE_FULL_MEASURE_REG_ADDR,SCALE_TASK_CALIBRATE_FULL_MEASURE_REG_CNT,write_value);
-  if(rc != 0){
+  if(rc <= 0){
   /*校准错误直接返回失败*/
   result = SCALE_TASK_FAILURE;
   goto calibrate_full_msg_handle;
@@ -160,10 +179,20 @@ calibrate_full_msg_handle:
  /*向protocol_task回应remov tar weight结果*/
  if(msg->type ==  REQ_REMOVE_TAR_WEIGHT){
   result = SCALE_TASK_SUCCESS;
+  
+  write_value[0]=SCALE_TASK_CLEAR_ZERO_WEIGHT_VALUE;
+  rc = modbus_write_registers(ctx,SCALE_TASK_CLEAR_ZERO_WEIGHT_REG_ADDR,SCALE_TASK_CLEAR_ZERO_WEIGHT_REG_CNT,write_value);
+  if(rc <= 0){
+  /*置零误直接返回失败*/
+  result = SCALE_TASK_FAILURE;
+  goto remov_tar_weight_msg_handle;
+  } 
+  
+  
   write_value[0]=SCALE_TASK_REMOVE_TAR_WEIGHT_VALUE >> 16;
   write_value[1]=SCALE_TASK_REMOVE_TAR_WEIGHT_VALUE & 0xFFFF;
   rc = modbus_write_registers(ctx,SCALE_TASK_REMOVE_TAR_WEIGHT_REG_ADDR,SCALE_TASK_REMOVE_TAR_WEIGHT_REG_CNT,write_value);
-  if(rc != 0){
+  if(rc <= 0){
   /*去皮错误直接返回失败*/
   result = SCALE_TASK_FAILURE;
   goto remov_tar_weight_msg_handle;
@@ -181,14 +210,14 @@ remov_tar_weight_msg_handle:
   result = SCALE_TASK_SUCCESS;
   write_value[0] = SCALE_TASK_SYS_UNLOCK_VALUE;
   rc = modbus_write_registers(ctx,SCALE_TASK_UNLOCK_REG_ADDR,SCALE_TASK_UNLOCK_REG_CNT,write_value);
-  if(rc != 0){
+  if(rc <= 0){
   /*系统解锁错误直接返回失败*/
   result = SCALE_TASK_FAILURE;
   goto set_addr_msg_handle;
   }
   write_value[0]=msg->scale_addr;
   rc = modbus_write_registers(ctx,SCALE_TASK_ADDR_REG_ADDR,SCALE_TASK_ADDR_REG_CNT,write_value);
-  if(rc != 0){
+  if(rc <= 0){
   /*设置地址错误直接返回失败*/
   result = SCALE_TASK_FAILURE;
   goto set_addr_msg_handle;
@@ -197,6 +226,7 @@ remov_tar_weight_msg_handle:
 set_addr_msg_handle:    
   if(result == SCALE_TASK_SUCCESS){
     slave_addr = msg->scale_addr;
+    modbus_set_slave(ctx,slave_addr);
     }
     protocol_msg.type = RESPONSE_SET_ADDR;
     protocol_msg.result = result;

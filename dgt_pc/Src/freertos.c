@@ -55,6 +55,8 @@
 #include "protocol_task.h"
 #include "scale_task.h"
 #include "iwdg.h"
+#include "firmware_version.h"
+#include "tasks_init.h"
 #include "log.h"
 #define LOG_MODULE_NAME   "[freertos]"
 #define LOG_MODULE_LEVEL   LOG_LEVEL_DEBUG 
@@ -64,9 +66,10 @@
 osThreadId defaultTaskHandle;
 
 /* USER CODE BEGIN Variables */
-#define  WATCH_DOG_TIMEOUT_VALUE        200
-#define  CPU_TIMEOUT_VALUE              1000
+#define  WATCH_DOG_TIMEOUT_VALUE        50
 extern IWDG_HandleTypeDef hiwdg;
+EventGroupHandle_t tasks_sync_evt_group_hdl;
+uint16_t wdg_timeout = WATCH_DOG_TIMEOUT_VALUE;
 /* USER CODE END Variables */
 
 /* Function prototypes -------------------------------------------------------*/
@@ -75,6 +78,7 @@ void StartDefaultTask(void const * argument);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
 /* USER CODE BEGIN FunctionPrototypes */
+static void tasks_init();
 static void toggle_led();
 /* USER CODE END FunctionPrototypes */
 
@@ -141,7 +145,8 @@ __weak void vApplicationMallocFailedHook(void)
 
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
-       
+  log_init();
+  tasks_init();  
   /* USER CODE END Init */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -165,7 +170,7 @@ void MX_FREERTOS_Init(void) {
   osThreadDef(protocol_task, protocol_task, osPriorityNormal, 0, 128);
   protocol_task_hdl = osThreadCreate(osThread(protocol_task), NULL);
   
-  osThreadDef(scale_task, scale_task, osPriorityNormal, 0, 200);
+  osThreadDef(scale_task, scale_task, osPriorityNormal, 0, 300);
   scale_task_hdl = osThreadCreate(osThread(scale_task), NULL);
   
   /* USER CODE END RTOS_THREADS */
@@ -186,13 +191,24 @@ void StartDefaultTask(void const * argument)
   {
     /*feed dog every 200 ms*/
     HAL_IWDG_Refresh(&hiwdg);
-    osDelay(WATCH_DOG_TIMEOUT_VALUE);
+    osDelay(wdg_timeout);
     toggle_led();
   }
   /* USER CODE END StartDefaultTask */
 }
 
 /* USER CODE BEGIN Application */
+
+
+static void tasks_init()
+{
+ tasks_sync_evt_group_hdl=xEventGroupCreate(); 
+ log_assert(tasks_sync_evt_group_hdl);
+
+ log_info("version : %d.%d.\r\n",FIRMWARE_VERSION >> 8,FIRMWARE_VERSION & 0xff);
+ log_debug("create task sync evt group ok.\r\n");
+}
+
 static void toggle_led()
 {
  HAL_GPIO_TogglePin(LED_CTRL_GPIO_Port, LED_CTRL_Pin);

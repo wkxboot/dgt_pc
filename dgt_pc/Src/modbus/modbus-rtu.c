@@ -9,7 +9,7 @@
 #include "cmsis_os.h"
 #include "log.h"
 #define LOG_MODULE_NAME   "[modbus-rtu]"
-#define LOG_MODULE_LEVEL   LOG_LEVEL_OFF    
+#define LOG_MODULE_LEVEL   LOG_LEVEL_DEBUG    
 
    
 /* Table of CRC values for high-order byte */
