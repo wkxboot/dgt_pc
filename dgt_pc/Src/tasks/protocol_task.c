@@ -8,7 +8,7 @@
 #include "cpu_utils.h"
 #include "log.h"
 #define LOG_MODULE_NAME   "[protocol]"
-#define LOG_MODULE_LEVEL   LOG_LEVEL_ERROR 
+#define LOG_MODULE_LEVEL   LOG_LEVEL_DEBUG 
 
 extern int protocol_serial_handle;
 extern serial_hal_driver_t protocol_serial_driver;
@@ -576,6 +576,7 @@ protocol_parse_start:
     /*解析完毕 回应操作结果*/  
     /*使能485发送*/
     bsp_protocol_485_enable_write();
+    osDelay(2);
     write_length = serial_write(protocol_serial_handle,send_buffer,length_to_write);
     for (int i=0; i < write_length; i++){
     log_array("[%2X]\r\n", send_buffer[i]);
