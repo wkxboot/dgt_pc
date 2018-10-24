@@ -340,8 +340,7 @@ void protocol_task(void const * argument)
  
  while(1){
 protocol_parse_start:
-  /*使能485接收*/
-  bsp_protocol_485_enable_read();
+
   timeout = PROTOCOL_TASK_FRAME_TIMEOUT_VALUE;
   length_to_read = 4;
   read_length =0;
@@ -574,8 +573,6 @@ protocol_parse_start:
   }  
  
     /*解析完毕 回应操作结果*/  
-    /*使能485发送*/
-    bsp_protocol_485_enable_write();
     write_length = serial_write(protocol_serial_handle,send_buffer,length_to_write);
     for (int i=0; i < write_length; i++){
     log_array("[%2X]\r\n", send_buffer[i]);
