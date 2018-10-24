@@ -8,7 +8,7 @@
 #include "cpu_utils.h"
 #include "log.h"
 #define LOG_MODULE_NAME   "[protocol]"
-#define LOG_MODULE_LEVEL   LOG_LEVEL_ERROR 
+#define LOG_MODULE_LEVEL   LOG_LEVEL_DEBUG 
 
 extern int protocol_serial_handle;
 extern serial_hal_driver_t protocol_serial_driver;
