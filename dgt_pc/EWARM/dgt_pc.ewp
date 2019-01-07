@@ -367,6 +367,7 @@
                     <state>$PROJ_DIR$/../Src/serial</state>
                     <state>$PROJ_DIR$/../Src/comm_utils</state>
                     <state>$PROJ_DIR$/../Src/board</state>
+                    <state>$PROJ_DIR$/../Src/firmware_version</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -1072,7 +1073,7 @@
                 <group>
                     <name>cpu</name>
                     <file>
-                        <name>$PROJ_DIR$\..\Src\debug\CPU\cpu_utils.c</name>
+                        <name>$PROJ_DIR$\..\Src\debug\cpu\cpu_utils.c</name>
                     </file>
                 </group>
                 <group>

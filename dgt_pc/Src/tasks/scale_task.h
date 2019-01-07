@@ -71,6 +71,4 @@ void scale_task(void const *argument);
 
 
 
-
-
 #endif
