@@ -71,9 +71,11 @@ void scale_task(void const * argument)
   /*向protocol_task回应净重值*/
   if(req_msg.type ==  PROTOCOL_TASK_MSG_REQ_NET_WEIGHT){
      modbus_set_slave(ctx,req_msg.value);
+     rsp_msg.reserved = SCALE_TASK_SUCCESS;
      rc = modbus_read_registers(ctx,SCALE_TASK_NET_WEIGHT_REG_ADDR,SCALE_TASK_NET_WEIGHT_REG_CNT,read_value);
      if(rc <= 0){
         net_weight = SCALE_TASK_WEIGHT_ERR_VALUE;
+        rsp_msg.reserved = SCALE_TASK_FAILURE;
      }else{
         net_weight = read_value[0]<<16 |read_value[1];
        if(net_weight >= SCALE_TASK_MAX_WEIGHT_VALUE ||
@@ -89,7 +91,7 @@ void scale_task(void const * argument)
 
  /*向protocol_task回应0点校准结果*/
  if(req_msg.type ==  PROTOCOL_TASK_MSG_REQ_CALIBRATE_ZERO){
-    modbus_set_slave(ctx,req_msg.value);
+    modbus_set_slave(ctx,req_msg.reserved);
     rsp_msg.value = SCALE_TASK_SUCCESS;
     write_value[0]=SCALE_TASK_CALIBRATE_AUTO_VALUE >> 16;
     write_value[1]=SCALE_TASK_CALIBRATE_AUTO_VALUE & 0xFFFF;
@@ -115,7 +117,7 @@ calibrate_zero_msg_handle:
  
   /*向protocol_task回应full点校准结果*/
   if(req_msg.type ==  PROTOCOL_TASK_MSG_REQ_CALIBRATE_FULL){
-     modbus_set_slave(ctx,req_msg.value);
+     modbus_set_slave(ctx,req_msg.reserved);
      rsp_msg.value = SCALE_TASK_SUCCESS;
      write_value[0]=SCALE_TASK_CALIBRATE_AUTO_VALUE >> 16;
      write_value[1]=SCALE_TASK_CALIBRATE_AUTO_VALUE & 0xFFFF;
@@ -175,7 +177,7 @@ remov_tar_weight_msg_handle:
         rsp_msg.value  = SCALE_TASK_FAILURE;
         goto set_addr_msg_handle;
      }
-     write_value[0]= req_msg.value;
+     write_value[0]= req_msg.reserved;
      rc = modbus_write_registers(ctx,SCALE_TASK_ADDR_REG_ADDR,SCALE_TASK_ADDR_REG_CNT,write_value);
      if(rc <= 0){
        /*设置地址错误直接返回失败*/

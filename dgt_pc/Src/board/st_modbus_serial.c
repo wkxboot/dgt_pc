@@ -33,7 +33,7 @@ int st_modbus_serial_init(uint8_t port,uint32_t bauds,uint8_t data_bit,uint8_t s
 {
  (void)port;
 
-  //huart1.Instance = USART1;
+  huart2.Instance = USART2;
   st_serial->Init.BaudRate = bauds;
   if(data_bit == 8){
   huart1.Init.WordLength = UART_WORDLENGTH_8B;

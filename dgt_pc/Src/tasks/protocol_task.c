@@ -131,7 +131,7 @@ static int16_t protocol_get_net_weight(uint8_t addr,int16_t *net_weight)
   os_msg = osMessageGet(protocol_task_msg_q_id,osWaitForever);
   if(os_msg.status == osEventMessage){
      rsp_msg =  *(protocol_task_msg_t *)&os_msg.value.v;
-     if(rsp_msg.type == PROTOCOL_TASK_MSG_RESPONSE_NET_WEIGHT){
+     if(rsp_msg.type == PROTOCOL_TASK_MSG_RESPONSE_NET_WEIGHT && rsp_msg.reserved == SCALE_TASK_SUCCESS){
         *net_weight = (int16_t)rsp_msg.value;
         rc = 0;
      }  
@@ -158,7 +158,7 @@ static int protocol_remove_tar_weight(uint8_t addr)
 
   os_msg = osMessageGet(protocol_task_msg_q_id,PROTOCOL_TASK_MSG_WAIT_TIMEOUT_VALUE);
   if(os_msg.status == osEventMessage){
-     rsp_msg = *(protocol_task_msg_t *)os_msg.value.v;
+     rsp_msg = *(protocol_task_msg_t *)&os_msg.value.v;
      if(rsp_msg.type == PROTOCOL_TASK_MSG_RESPONSE_REMOVE_TAR_WEIGHT && rsp_msg.value == SCALE_TASK_SUCCESS){
         rc = 0;
      }
@@ -191,7 +191,7 @@ static int protocol_calibrate_weight(uint8_t addr,int16_t weight)
   log_assert(status == osOK);
   os_msg = osMessageGet(protocol_task_msg_q_id,PROTOCOL_TASK_MSG_WAIT_TIMEOUT_VALUE);
   if(os_msg.status == osEventMessage){
-     rsp_msg = *(protocol_task_msg_t *)os_msg.value.v;
+     rsp_msg = *(protocol_task_msg_t *)&os_msg.value.v;
      if((rsp_msg.type == PROTOCOL_TASK_MSG_RESPONSE_CALIBRATE_ZERO ||rsp_msg.type == PROTOCOL_TASK_MSG_RESPONSE_CALIBRATE_FULL) && rsp_msg.value == SCALE_TASK_SUCCESS){
         rc = 0;
      }
@@ -221,7 +221,7 @@ static uint8_t protocol_get_sensor_id(uint8_t addr,uint8_t *sensor_id)
 
   os_msg = osMessageGet(protocol_task_msg_q_id,PROTOCOL_TASK_MSG_WAIT_TIMEOUT_VALUE);
   if(os_msg.status == osEventMessage){
-     rsp_msg = *(protocol_task_msg_t *)os_msg.value.v;
+     rsp_msg = *(protocol_task_msg_t *)&os_msg.value.v;
      if(rsp_msg.type == PROTOCOL_TASK_MSG_RESPONSE_SENSOR_ID){
         *sensor_id = rsp_msg.value;
         rc = 0;
@@ -252,7 +252,7 @@ static uint16_t protocol_get_fireware_version(uint8_t addr,uint16_t *version)
 
   os_msg = osMessageGet(protocol_task_msg_q_id,PROTOCOL_TASK_MSG_WAIT_TIMEOUT_VALUE);
   if(os_msg.status == osEventMessage){
-     rsp_msg = *(protocol_task_msg_t *)os_msg.value.v;
+     rsp_msg = *(protocol_task_msg_t *)&os_msg.value.v;
      if(rsp_msg.type == PROTOCOL_TASK_MSG_RESPONSE_VERSION){
         *version = rsp_msg.value;
         rc = 0;
@@ -278,13 +278,13 @@ int protocol_set_scale_addr(uint8_t addr,uint8_t new_addr)
  
   req_msg.type = PROTOCOL_TASK_MSG_REQ_SET_ADDR;
   req_msg.value = addr;
- 
+  req_msg.reserved = new_addr;
   status = osMessagePut(scale_task_msg_q_id,*(uint32_t*)&req_msg,PROTOCOL_TASK_MSG_PUT_TIMEOUT_VALUE);
   log_assert(status == osOK);
 
   os_msg = osMessageGet(protocol_task_msg_q_id,PROTOCOL_TASK_MSG_WAIT_TIMEOUT_VALUE);
   if(os_msg.status == osEventMessage){
-     rsp_msg = *(protocol_task_msg_t *)os_msg.value.v;
+     rsp_msg = *(protocol_task_msg_t *)&os_msg.value.v;
      if(rsp_msg.type == PROTOCOL_TASK_MSG_RESPONSE_SET_ADDR && rsp_msg.value == SCALE_TASK_SUCCESS){
         rc = 0;
      }
@@ -591,7 +591,8 @@ void protocol_task(void const * argument)
        log_error("protocol err in  serial send timeout.\r\n",); 
        goto err_exit;  
     }
-    
+     log_info("func %d excute OK.\r\n",recv_buffer[PROTOCOL_TASK_ADU_FUNC_OFFSET]);
+   continue; 
 err_exit:
    log_error("func %d excute err.\r\n",recv_buffer[PROTOCOL_TASK_ADU_FUNC_OFFSET]); 
    serial_flush(protocol_serial_handle);

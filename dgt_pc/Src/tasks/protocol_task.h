@@ -106,9 +106,9 @@ typedef enum
 
 typedef struct
 {
-  protocol_task_msg_type_t type:8;
-  uint16_t                value:16;
-  uint8_t              reserved:8;
+  uint32_t type:8;
+  uint32_t value:16;
+  uint32_t reserved:8;
 }protocol_task_msg_t;
 
 
